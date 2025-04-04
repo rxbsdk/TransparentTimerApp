@@ -59,6 +59,11 @@ Helpful prompts:
 - Click on the timer to reset it to the configured duration
 - When the timer reaches zero, a screenshot is taken and sent to Gemini
 - The API response will be displayed above the timer
+- You can create a shortcut to pin to start to launch the app silently
+- You can create another shortcut to close all processes with the path of `C:\Windows\System32\cmd.exe /C "C:\PATH\net6.0-windows\exit.bat"`
+exit.bat:
+`@echo off
+taskkill /F /IM TransparentTimerApp.exe 2>nul`
 
 ## Troubleshooting
 
