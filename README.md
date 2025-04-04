@@ -31,7 +31,8 @@ Edit the `config.json` file to customize your settings:
 {
   "ApiKey": "YOUR_GEMINI_API_KEY_HERE",
   "Prompt": "Describe what you see in this image",
-  "TimerSeconds": 120
+  "TimerSeconds": 120,
+  "SaveScreenshots": false
 }
 ```
 
