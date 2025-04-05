@@ -39,6 +39,7 @@ Edit the `config.json` file to customize your settings:
 - **ApiKey**: Your Google Gemini API key
 - **Prompt**: The text prompt to send to Gemini along with the screenshot
 - **TimerSeconds**: The timer duration in seconds (minimum 5 seconds)
+- **SaveScreenshots**: Determines if screenshots are saved into a folder
 
 Helpful prompts:
   1. Answer the question only at the top of the web page. Ignore all others. It is likely multiple choice, so say the right answer, and be absolutley sure. No more than 3 short and concise sentences.
