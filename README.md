@@ -46,13 +46,6 @@ Helpful prompts:
   2. Answer the question highlighted in the blue box, ignore all others.
   3. (default prompt)
 
-### Building and Running
-
-1. Open the solution in Visual Studio
-2. Build the solution (Build > Build Solution or press F6)
-3. Run the application (Debug > Start Debugging or press F5)
-4. Edit the `config.json` file created in the application's directory
-
 ## Usage
 
 - The timer will appear at the bottom middle of your screen
