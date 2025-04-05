@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -54,6 +55,18 @@ namespace TransparentTimerApp
         // Configuration
         private AppConfig config;
 
+        // Win32 API constants for window styles
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_TRANSPARENT = 0x00000020;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
+
+        // Win32 API functions for click-through
+        [DllImport("user32.dll")]
+        static extern int GetWindowLong(IntPtr hwnd, int index);
+
+        [DllImport("user32.dll")]
+        static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
+
         // Win32 API functions for cursor capture
         [DllImport("user32.dll")]
         static extern bool GetCursorInfo(out CURSORINFO pci);
@@ -86,6 +99,7 @@ namespace TransparentTimerApp
             this.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(1, 0, 0, 0));
             this.Topmost = true;
             this.ShowInTaskbar = false;
+            this.Focusable = false;
 
             // Position the window at the bottom middle of the screen
             this.Width = 200;
@@ -110,6 +124,22 @@ namespace TransparentTimerApp
             hoverTimer.Interval = TimeSpan.FromMilliseconds(100);
             hoverTimer.Tick += HoverTimer_Tick;
             hoverTimer.Start();
+
+            // Apply click-through when window is loaded
+            this.Loaded += MainWindow_Loaded;
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Make the window click-through but still receive mouse events
+            WindowInteropHelper wndHelper = new WindowInteropHelper(this);
+
+            int exStyle = GetWindowLong(wndHelper.Handle, GWL_EXSTYLE);
+            // Add WS_EX_NOACTIVATE style to prevent activation/focus
+            exStyle |= WS_EX_NOACTIVATE;
+
+            // Apply the updated window style
+            SetWindowLong(wndHelper.Handle, GWL_EXSTYLE, exStyle);
         }
 
         private void Timer_Tick(object? sender, EventArgs e)
@@ -459,6 +489,9 @@ namespace TransparentTimerApp
 
                 // Then reset the timer
                 ResetTimer();
+
+                // Explicitly prevent focus 
+                e.Handled = true;
             }
         }
 
