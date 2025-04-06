@@ -44,7 +44,8 @@ Edit the `config.json` file to customize your settings:
 Helpful prompts:
   1. Answer the question only at the top of the web page. Ignore all others. It is likely multiple choice, so say the right answer, and be absolutley sure. No more than 3 short and concise sentences.
   2. Answer the question highlighted in the blue box, ignore all others.
-  3. (default prompt)
+  3. Give a concise answer to the question near the mouse cursor. Do not describe the task. Respond with a direct solution in 3 simple sentences or fewer.
+  4. (default prompt)
 
 ## Usage
 
