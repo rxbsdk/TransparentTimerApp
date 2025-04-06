@@ -193,7 +193,7 @@ namespace TransparentTimerApp
             {
                 From = from,
                 To = to,
-                Duration = TimeSpan.FromSeconds(0.3)
+                Duration = TimeSpan.FromSeconds(0.2)
             };
 
             this.BeginAnimation(OpacityProperty, animation);
