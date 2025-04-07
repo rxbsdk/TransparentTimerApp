@@ -1,14 +1,14 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
+﻿//using System.Configuration;
+//using System.Data;
+//using System.Windows;
 
-namespace TransparentTimerApp
-{
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
-    public partial class App : Application
-    {
-    }
+//namespace TransparentTimerApp
+//{
+//    /// <summary>
+//    /// Interaction logic for App.xaml
+//    /// </summary>
+//    public partial class App : Application
+//    {
+//    }
 
-}
+//}

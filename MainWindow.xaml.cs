@@ -3,7 +3,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,6 +12,10 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+// Use fully qualified names for MessageBox to avoid ambiguity
+using MessageBox = System.Windows.MessageBox;
+using Application = System.Windows.Application;
+using Mscc.GenerativeAI;
 
 namespace TransparentTimerApp
 {
@@ -50,7 +53,6 @@ namespace TransparentTimerApp
         private bool isTimerPaused = false;
         private bool isMouseOver = false;
         private DispatcherTimer hoverTimer;
-        private const string GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
         // Configuration
         private AppConfig config;
@@ -61,29 +63,29 @@ namespace TransparentTimerApp
         private const int WS_EX_NOACTIVATE = 0x08000000;
 
         // Win32 API functions for click-through
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         static extern int GetWindowLong(IntPtr hwnd, int index);
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
 
         // Win32 API functions for cursor capture
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         static extern bool GetCursorInfo(out CURSORINFO pci);
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         static extern bool GetIconInfo(IntPtr hIcon, out ICONINFO piconinfo);
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         static extern IntPtr CopyIcon(IntPtr hIcon);
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         static extern bool DrawIcon(IntPtr hdc, int x, int y, IntPtr hIcon);
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         static extern bool DestroyIcon(IntPtr hIcon);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("gdi32.dll", SetLastError = true)]
         static extern bool DeleteGdiObject(IntPtr hObject);
 
         public MainWindow()
@@ -138,8 +140,18 @@ namespace TransparentTimerApp
             // Add WS_EX_NOACTIVATE style to prevent activation/focus
             exStyle |= WS_EX_NOACTIVATE;
 
-            // Apply the updated window style
-            SetWindowLong(wndHelper.Handle, GWL_EXSTYLE, exStyle);
+            // Apply the updated window style and check result
+            int result = SetWindowLong(wndHelper.Handle, GWL_EXSTYLE, exStyle);
+
+            // Check for errors
+            if (result == 0)
+            {
+                int error = Marshal.GetLastWin32Error();
+                if (error != 0)
+                {
+                    Console.WriteLine($"Error setting window style: {error}");
+                }
+            }
         }
 
         private void Timer_Tick(object? sender, EventArgs e)
@@ -222,8 +234,8 @@ namespace TransparentTimerApp
                 // Check if screenshot was successful
                 if (string.IsNullOrEmpty(screenshotPath))
                 {
-                    GeminiResponseText.Text = "Failed to take screenshot";
-                    GeminiResponseText.Visibility = Visibility.Visible;
+                    StatusText.Text = "Failed to take screenshot";
+                    StatusText.Visibility = Visibility.Visible;
                     this.Opacity = 1;
                     return;
                 }
@@ -231,17 +243,84 @@ namespace TransparentTimerApp
                 // Restore window visibility
                 this.Opacity = 1;
 
-                // Send to Gemini API
-                string response = await SendImageToGeminiAPI(screenshotPath);
+                // Show status
+                StatusText.Text = "Analyzing screenshot...";
+                StatusText.Visibility = Visibility.Visible;
 
-                // Display response
-                GeminiResponseText.Text = response;
-                GeminiResponseText.Visibility = Visibility.Visible;
+                try
+                {
+                    // Send to Gemini API using the SDK
+                    string response = await SendImageToGeminiWithSDK(screenshotPath);
+
+                    // Hide status
+                    StatusText.Visibility = Visibility.Collapsed;
+
+                    // Display response
+                    GeminiResponseText.Text = response;
+                    GeminiResponseText.Visibility = Visibility.Visible;
+                }
+                catch (Exception ex)
+                {
+                    StatusText.Text = $"API Error: {ex.Message}";
+                    StatusText.Visibility = Visibility.Visible;
+                }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error: {ex.Message}");
                 this.Opacity = 1;
+            }
+        }
+
+        private async Task<string> SendImageToGeminiWithSDK(string imagePath)
+        {
+            try
+            {
+                // Initialize Gemini client using the SDK
+                var googleAI = new GoogleAI(apiKey: config.ApiKey);
+
+                // Create the model with appropriate tools
+                GenerativeModel model;
+
+                if (config.UseGrounding && !string.IsNullOrEmpty(config.SearchApiKey))
+                {
+                    // Create the model with Google Search grounding enabled
+                    model = googleAI.GenerativeModel(
+                        model: Model.Gemini20Flash,
+                        tools: [new Tool { GoogleSearch = new() }]
+                    );
+
+                    // Configure Google Search settings if needed
+                    // model.UseGoogleSearch = true;  // This is implicitly set by adding the Tool
+                }
+                else
+                {
+                    // Use standard model without search
+                    model = googleAI.GenerativeModel(model: Model.Gemini20Flash);
+                }
+
+                // Create the request with image and prompt
+                var request = new GenerateContentRequest(config.Prompt);
+
+                // Add the image to the request
+                await request.AddMedia(imagePath);
+
+                // Send the request to Gemini
+                var response = await model.GenerateContent(request);
+
+                // Check if response has text
+                if (response != null && !string.IsNullOrEmpty(response.Text))
+                {
+                    return response.Text;
+                }
+                else
+                {
+                    return "No response text received from Gemini API.";
+                }
+            }
+            catch (Exception ex)
+            {
+                return $"Error using Gemini SDK: {ex.Message}";
             }
         }
 
@@ -252,6 +331,7 @@ namespace TransparentTimerApp
                 // Get the combined bounds of all screens to capture everything
                 System.Drawing.Rectangle bounds = System.Drawing.Rectangle.Empty;
 
+                // Use explicit namespace to avoid ambiguity
                 foreach (System.Windows.Forms.Screen screen in System.Windows.Forms.Screen.AllScreens)
                 {
                     bounds = System.Drawing.Rectangle.Union(bounds, screen.Bounds);
@@ -397,88 +477,6 @@ namespace TransparentTimerApp
             }
         }
 
-        private async Task<string> SendImageToGeminiAPI(string imagePath)
-        {
-            try
-            {
-                // Read the image and convert to base64
-                byte[] imageBytes = File.ReadAllBytes(imagePath);
-                string base64Image = Convert.ToBase64String(imageBytes);
-
-                // Create the request payload
-                var payload = new
-                {
-                    contents = new[]
-                    {
-                        new
-                        {
-                            parts = new object[]
-                            {
-                                new { text = config.Prompt },
-                                new
-                                {
-                                    inline_data = new
-                                    {
-                                        mime_type = "image/jpeg",
-                                        data = base64Image
-                                    }
-                                }
-                            }
-                        }
-                    }
-                };
-
-                // Serialize the payload to JSON
-                string jsonPayload = System.Text.Json.JsonSerializer.Serialize(payload);
-
-                // Create the HTTP client
-                using (HttpClient client = new HttpClient())
-                {
-                    // Create the request
-                    var requestUrl = $"{GEMINI_API_URL}?key={config.ApiKey}";
-                    var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-                    // Send the request
-                    var response = await client.PostAsync(requestUrl, content);
-
-                    // Process the response
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var responseBody = await response.Content.ReadAsStringAsync();
-
-                        // Parse the JSON response to extract the text portion
-                        using (System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(responseBody))
-                        {
-                            try
-                            {
-                                var root = doc.RootElement;
-                                // Navigate to the text property in the response
-                                if (root.TryGetProperty("candidates", out var candidates) &&
-                                    candidates.GetArrayLength() > 0 &&
-                                    candidates[0].TryGetProperty("content", out var content1) &&
-                                    content1.TryGetProperty("parts", out var parts) &&
-                                    parts.GetArrayLength() > 0 &&
-                                    parts[0].TryGetProperty("text", out var text))
-                                {
-                                    return text.GetString();
-                                }
-                            }
-                            catch
-                            {
-                                return "Failed to parse API response";
-                            }
-                        }
-                    }
-
-                    return $"API Error: {response.StatusCode} - {await response.Content.ReadAsStringAsync()}";
-                }
-            }
-            catch (Exception ex)
-            {
-                return $"Error: {ex.Message}";
-            }
-        }
-
         // Allow dragging the window and reset timer on click
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
         {
@@ -511,6 +509,7 @@ namespace TransparentTimerApp
 
             // Hide any previous Gemini response
             GeminiResponseText.Visibility = Visibility.Collapsed;
+            StatusText.Visibility = Visibility.Collapsed;
         }
     }
 }

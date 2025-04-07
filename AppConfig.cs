@@ -13,6 +13,10 @@ namespace TransparentTimerApp
         public string ScreenshotFolder { get; set; } = "Screenshots";
         public bool SaveScreenshots { get; set; } = true;
 
+        // Google Search grounding settings
+        public bool UseGrounding { get; set; } = false;
+        public string SearchApiKey { get; set; } = string.Empty; // Can use the same API key as Gemini
+
         // Static method to load config
         public static AppConfig LoadConfig()
         {
@@ -27,7 +31,7 @@ namespace TransparentTimerApp
                 if (File.Exists(configPath))
                 {
                     string jsonContent = File.ReadAllText(configPath);
-                    var config = JsonSerializer.Deserialize<AppConfig>(jsonContent);
+                    var config = JsonSerializer.Deserialize<AppConfig>(jsonContent, _serializerOptions);
 
                     // Make sure we don't return null
                     if (config != null)
@@ -63,16 +67,18 @@ namespace TransparentTimerApp
         }
 
         // Create a default config file for the user to edit
+        // Create a static JsonSerializerOptions instance to be reused
+        private static readonly JsonSerializerOptions _serializerOptions = new()
+        {
+            WriteIndented = true
+        };
+
         private static void CreateDefaultConfigFile(string path, AppConfig defaultConfig)
         {
             try
             {
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                };
-
-                string jsonString = JsonSerializer.Serialize(defaultConfig, options);
+                // Use the cached options instance
+                string jsonString = JsonSerializer.Serialize(defaultConfig, _serializerOptions);
                 File.WriteAllText(path, jsonString);
 
                 Console.WriteLine($"Created default config file at: {path}");

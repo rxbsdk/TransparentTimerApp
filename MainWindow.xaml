@@ -51,6 +51,22 @@
                                          BlurRadius="1"/>
                     </TextBlock.Effect>
                 </TextBlock>
+
+                <TextBlock x:Name="StatusText"
+           Foreground="#80FFFFFF"
+           FontSize="10"
+           TextAlignment="Center"
+           Margin="0,0,0,5"
+           Visibility="Collapsed">
+                    <TextBlock.Effect>
+                        <DropShadowEffect ShadowDepth="0.5" 
+                         Direction="330" 
+                         Color="Black" 
+                         Opacity="0.3" 
+                         BlurRadius="1"/>
+                    </TextBlock.Effect>
+    Analyzing...
+                </TextBlock>
             </StackPanel>
         </Border>
     </Grid>
